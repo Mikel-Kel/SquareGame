@@ -19,7 +19,12 @@ export function useBoard(N: number) {
   }
 
   function play(r: number, c: number): void {
-    board.value[idx(r, c)] = path.value.length + 1;
+    const k = idx(r, c);
+
+    // 🔒 garde-fou absolu
+    if (board.value[k] !== 0) return;
+
+    board.value[k] = path.value.length + 1;
     const pos: Pos = { r, c };
     path.value.push(pos);
     currentPos.value = pos;
