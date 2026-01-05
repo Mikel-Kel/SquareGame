@@ -28,8 +28,8 @@ const noSolution = ref(false);
 
 const showSettings = ref(false);
 const showInfo = ref(false);
-const stepDelayMs = ref(300);
-const moveVariant = ref<MoveVariant>("knight");
+const stepDelayMs = ref(50);
+const moveVariant = ref<MoveVariant>("square");
 
 /* Start message */
 const showStartMessage = ref(true);
@@ -229,6 +229,11 @@ const cells = computed(() => {
 });
 </script>
 
+
+/*========================
+   Template
+========================*/
+
 <template>
 <main class="page">
 
@@ -239,35 +244,39 @@ const cells = computed(() => {
   </div>
 
   <div class="title-icons">
-    <button @click="showInfo=true"><AppIcon name="info" :size="26"/></button>
-    <button @click="showSettings=true"><AppIcon name="tool" :size="26"/></button>
+    <button @click="showInfo = true">
+      <AppIcon name="info" :size="26" />
+    </button>
+    <button @click="showSettings = true">
+      <AppIcon name="tool" :size="26" />
+    </button>
   </div>
 </header>
 
 <div class="toolbar">
   <button @click="undo" :disabled="!path.length">
-    <AppIcon name="back" :size="32"/>
+    <AppIcon name="back" :size="32" />
   </button>
 
-  <button
-    @click="showTip = true"
-    :disabled="!currentPos"
-  >
-    <AppIcon name="lightbulb" :size="32"/>
+  <button @click="showTip = true" :disabled="!currentPos">
+    <AppIcon name="lightbulb" :size="32" />
   </button>
 
   <button @click="reset">
-    <AppIcon name="refresh" :size="32"/>
+    <AppIcon name="refresh" :size="32" />
   </button>
 </div>
 
 <div class="board-wrap">
-  <section class="board" :style="{gridTemplateColumns:`repeat(${N},1fr)`}">
+  <section
+    class="board"
+    :style="{ gridTemplateColumns: `repeat(${N}, 1fr)` }"
+  >
     <transition name="fade">
       <div
         v-if="showStartMessage"
         class="start-msg"
-        @click="showStartMessage=false"
+        @click="showStartMessage = false"
       >
         Start with any cell !
       </div>
@@ -278,14 +287,18 @@ const cells = computed(() => {
       :key="cell.i"
       class="cell"
       :class="{
-        current: currentPos?.r===cell.r && currentPos?.c===cell.c,
+        current: currentPos?.r === cell.r && currentPos?.c === cell.c,
         tip: showTip && bestTipMove &&
-             bestTipMove.r===cell.r && bestTipMove.c===cell.c,
-        valid: showValidMoves && isValidTarget(cell.r,cell.c) && board[cell.i]===0
+             bestTipMove.r === cell.r && bestTipMove.c === cell.c,
+        valid: showValidMoves &&
+               isValidTarget(cell.r, cell.c) &&
+               board[cell.i] === 0
       }"
-      @click="play(cell.r,cell.c)"
+      @click="play(cell.r, cell.c)"
     >
-      {{ board[cell.i] || '' }}
+      <span class="cell-value">
+        {{ board[cell.i] || '' }}
+      </span>
     </button>
   </section>
 </div>
@@ -295,13 +308,14 @@ const cells = computed(() => {
   @click="runSolution"
   :disabled="!currentPos || isSolving"
 >
-  <AppIcon name="help" :size="36"/>
+  <AppIcon name="help" :size="36" />
 </button>
 
-<!-- MODALS -->
-<div v-if="showSettings" class="modal" @click.self="showSettings=false">
+<!-- SETTINGS -->
+<div v-if="showSettings" class="modal" @click.self="showSettings = false">
   <div class="modal-content">
     <h3>Settings</h3>
+
     <label>
       Variant
       <select v-model="moveVariant">
@@ -312,16 +326,24 @@ const cells = computed(() => {
 
     <label>
       Speed {{ stepDelayMs }} ms
-      <input type="range" min="100" max="2000" step="50" v-model="stepDelayMs"/>
+      <input
+        type="range"
+        min="50"
+        max="2000"
+        step="50"
+        v-model="stepDelayMs"
+      />
     </label>
 
     <label class="checkbox">
-      <input type="checkbox" v-model="showValidMoves"/> Show valid moves
+      <input type="checkbox" v-model="showValidMoves" />
+      Show valid moves
     </label>
   </div>
 </div>
 
-<div v-if="showInfo" class="modal" @click.self="showInfo=false">
+<!-- INFO -->
+<div v-if="showInfo" class="modal" @click.self="showInfo = false">
   <div class="modal-content">
     <h3>Rules</h3>
     <p>Visit every cell exactly once.</p>
@@ -331,106 +353,176 @@ const cells = computed(() => {
 </main>
 </template>
 
+
+/*========================
+   Styles
+========================*/
+
 <style scoped>
-.page { max-width:980px; margin:auto; padding:12px; }
+  .page {
+  max-width: 980px;
+  margin: auto;
+  padding: 12px;
+}
 
+/* HEADER */
 .titlebar {
-  display:flex;
-  justify-content:center;
-  position:relative;
-}
-.title-center { text-align:center; }
-.title-icons {
-  position:absolute;
-  right:0;
-  top:0;
-  display:flex;
-  gap:8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
 }
 
+.title-center {
+  text-align: center;
+}
+
+.title-center h1 {
+  margin: 0;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin-top: 2px;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.title-icons {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.title-icons button {
+  padding: 2px;
+}
+
+/* TOOLBAR */
 .toolbar {
-  display:flex;
-  justify-content:center;
-  gap:12px;
-  margin:12px 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0;
 }
 
 button {
-  background:none;
-  border:none;
-  color:#1e3a8a;
-  cursor:pointer;
-}
-button:disabled {
-  color:#9ca3af;
-  cursor:default;
+  background: none;
+  border: none;
+  color: #1e3a8a;
+  cursor: pointer;
 }
 
-.board-wrap {
-  width:min(92vmin,820px);
-  margin:auto;
-  position:relative;
+button:disabled {
+  color: #9ca3af;
+  cursor: default;
 }
+
+/* BOARD */
+.board-wrap {
+  width: min(92vmin, 820px);
+  margin: auto;
+  position: relative;
+}
+
 .board {
-  display:grid;
-  gap:8px;
-  aspect-ratio:1;
+  display: grid;
+  gap: 8px;
+  aspect-ratio: 1;
+  align-items: stretch;
+  justify-items: stretch;
+  z-index: 1;
 }
 
 .cell {
-  aspect-ratio:1;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,.28);
-  display:grid;
-  place-items:center;
-  font-size:18px;
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
 }
 
-.cell.current { outline:3px solid #2563eb; }
-.cell.tip { background:#c6f6d5; outline:3px solid #2f855a; }
-.cell.valid { background:#e8f3ff; }
+.cell-value {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
 
+.cell.current {
+  box-shadow: inset 0 0 0 3px #2563eb;
+}
+
+.cell.tip {
+  background: #c6f6d5;
+  box-shadow: inset 0 0 0 3px #2f855a;
+}
+
+.cell.valid {
+  background: #e8f3ff;
+}
+
+/* START MESSAGE */
 .start-msg {
-  position:absolute;
-  inset:0;
-  display:grid;
-  place-items:center;
-  font-size:42px;
-  font-weight:600;
-  color:#2563eb;
-  pointer-events:auto;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 42px;
+  font-weight: 600;
+  color: #2563eb;
+  background: rgba(255,255,255,0.85); /* optionnel mais recommandé */
+  z-index: 10;
+  pointer-events: auto;
 }
 
+/* FADE */
 .fade-enter-active,
-.fade-leave-active { transition:opacity .6s; }
-.fade-enter-from,
-.fade-leave-to { opacity:0; }
-
-.solve-btn {
-  position:fixed;
-  bottom:16px;
-  right:16px;
-  width:56px;
-  height:56px;
+.fade-leave-active {
+  transition: opacity 0.6s;
 }
 
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* SOLVER BUTTON */
+.solve-btn {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+}
+
+/* MODALS */
 .modal {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
-  display:grid;
-  place-items:center;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
 }
 
 .modal-content {
-  background:white;
-  padding:20px;
-  border-radius:14px;
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
 }
 
 .checkbox {
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}  
 </style>
