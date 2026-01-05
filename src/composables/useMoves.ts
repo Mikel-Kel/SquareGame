@@ -3,6 +3,9 @@ import { computed, type Ref } from "vue";
 import type { Cell, Pos } from "./useBoard";
 import { MOVE_OFFSETS, type MoveVariant } from "./moveOffsets";
 
+/* =====================================================
+   Pure helper (solver-safe, no refs, no Vue)
+===================================================== */
 export function validMovesFromBoard(
   boardArr: Cell[],
   N: number,
@@ -26,6 +29,9 @@ export function validMovesFromBoard(
   return res;
 }
 
+/* =====================================================
+   UI composable
+===================================================== */
 export function useMoves(
   board: Ref<Cell[]>,
   N: number,
@@ -37,7 +43,7 @@ export function useMoves(
   const inside = (r: number, c: number) =>
     r >= 0 && r < N && c >= 0 && c < N;
 
-  const offsets = computed<Pos[]>(() => MOVE_OFFSETS[moveVariant.value]);
+  const offsets = computed(() => MOVE_OFFSETS[moveVariant.value]);
 
   function validMovesFrom(pos: Pos): Pos[] {
     const res: Pos[] = [];
@@ -60,5 +66,8 @@ export function useMoves(
     return validMoves.value.some(p => p.r === r && p.c === c);
   }
 
-  return { validMoves, isValidTarget };
+  return {
+    validMoves,
+    isValidTarget,
+  };
 }

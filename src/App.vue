@@ -3,20 +3,14 @@ import { ref, computed, watch } from "vue";
 import AppIcon from "@/components/AppIcon.vue";
 import { useBoard } from "@/composables/useBoard";
 import type { Pos } from "@/composables/useBoard";
-import { useMoves } from "@/composables/useMoves";
-import { validMovesFromBoard } from "@/composables/useMoves";
+import { useMoves, validMovesFromBoard } from "@/composables/useMoves";
 import type { MoveVariant } from "@/composables/moveOffsets";
-import { MOVE_OFFSETS } from "@/composables/moveOffsets";
+import { useSolver } from "@/composables/useSolver";
 
 /* =======================
    Configuration
 ======================= */
 const N = 10;
-
-/* =======================
-   Types
-======================= */
-
 
 
 /* =======================
@@ -35,6 +29,11 @@ const moves = useMoves(
 
 const { validMoves, isValidTarget } = moves;
 
+const { solveFrom } = useSolver(
+  board,
+  N,  
+  moveVariant
+);
 
 const showTip = ref(false);
 const showValidMoves = ref(true);
@@ -66,6 +65,7 @@ hideStartMessageAfterDelay();
 /* =======================
    Tip (Warnsdorff)
 ======================= */
+
 function degree(boardArr: number[], to: Pos): number {
   boardArr[idx(to.r, to.c)] = -1;
   const d = validMovesFromBoard(
@@ -77,6 +77,8 @@ function degree(boardArr: number[], to: Pos): number {
   boardArr[idx(to.r, to.c)] = 0;
   return d;
 }
+
+
 const bestTipMove = computed<Pos | null>(() => {
   if (!currentPos.value) return null;
 
@@ -106,47 +108,35 @@ function validMovesFromSolver(_boardArr: number[], _pos: Pos): Pos[] {
 /* =======================
    Solver
 ======================= */
-function solveFrom(board0: number[], pos: Pos, step: number): Pos[] | null {
-  if (step > N * N) return [];
-
-  const moves = validMovesFromBoard(
-    board0,
-    N,
-    pos,
-    moveVariant.value
-  )
-    .map(p => ({ p, d: degree(board0, p) }))
-    .sort((a, b) => a.d - b.d)
-    .map(x => x.p);
-
-  for (const m of moves) {
-    board0[idx(m.r, m.c)] = step;
-    const rest = solveFrom(board0, m, step + 1);
-    if (rest) return [m, ...rest];
-    board0[idx(m.r, m.c)] = 0;
-  }
-
-  return null;
-}
 
 function onPlay(r: number, c: number) {
-  // 🔒 règles de déplacement
+  // 🔒 1. cellule déjà occupée
+  if (board.value[idx(r, c)] !== 0) return
+
+  // 🔒 2. règles de déplacement
   if (!isValidTarget(r, c)) return
 
   play(r, c)
 
-  // 🎨 UI concerns
+  // 🎨 UI
   showTip.value = false
   showStartMessage.value = false
 }
 
 async function runSolution(): Promise<void> {
+
   if (!currentPos.value || isSolving.value) return;
 
   isSolving.value = true;
   noSolution.value = false;
 
-  const copy = board.value.slice();
+  // ✅ Source de vérité = path (évite board/path désync)
+  const copy = Array(N * N).fill(0);
+  for (let i = 0; i < path.value.length; i++) {
+    const p = path.value[i]!;
+    copy[idx(p.r, p.c)] = i + 1;
+  }
+
   const start = path.value.length + 1;
   const result = solveFrom(copy, currentPos.value, start);
 
@@ -156,21 +146,26 @@ async function runSolution(): Promise<void> {
     return;
   }
 
+  // ✅ Appliquer via play() (évite incohérences state)
   for (const p of result) {
     await sleep(stepDelayMs.value);
-    board.value[idx(p.r,p.c)] = path.value.length + 1;
-    path.value.push(p);
-    currentPos.value = p;
+    play(p.r, p.c);
   }
 
   isSolving.value = false;
 }
 
+
+
 /* =======================
    Actions
 ======================= */
 
-watch(moveVariant, reset);
+watch(moveVariant, () => {
+  reset()
+  showTip.value = false
+  showStartMessage.value = true
+})
 
 /* =======================
    Grid
@@ -258,12 +253,14 @@ const cells = computed(() => {
   </section>
 </div>
 
+
 <button
   class="solve-btn"
   @click="runSolution"
   :disabled="!currentPos || isSolving"
 >
-  <AppIcon name="help" :size="36" />
+
+<AppIcon name="help" :size="36" />
 </button>
 
 <!-- SETTINGS -->
