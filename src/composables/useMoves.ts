@@ -1,86 +1,40 @@
 // src/composables/useMoves.ts
 import { computed, type Ref } from "vue";
-import type { Cell, Pos } from "./useBoard";
+import type { BoardState, Pos } from "./BoardState";
 import { MOVE_OFFSETS, type MoveVariant } from "./moveOffsets";
 
-/* =====================================================
-   Pure helper (solver-safe, no refs, no Vue)
-===================================================== */
-export function validMovesFromBoard(
-  boardArr: Cell[],
-  N: number,
-  pos: Pos,
-  moveVariant: MoveVariant
-): Pos[] {
-  const idx = (r: number, c: number) => r * N + c;
-  const inside = (r: number, c: number) =>
-    r >= 0 && r < N && c >= 0 && c < N;
-
-  const offsets = MOVE_OFFSETS[moveVariant];
-
-  const res: Pos[] = [];
-  for (const o of offsets) {
-    const r = pos.r + o.r;
-    const c = pos.c + o.c;
-    if (inside(r, c) && boardArr[idx(r, c)] === 0) {
-      res.push({ r, c });
-    }
-  }
-  return res;
-}
-
-/* =====================================================
-   UI composable
-===================================================== */
 export function useMoves(
-  board: Ref<Cell[]>,
-  N: number,
-  currentPos: Ref<Pos | null>,
+  board: Ref<BoardState>,
   moveVariant: Ref<MoveVariant>
 ) {
-  const idx = (r: number, c: number) => r * N + c;
+  const idx = (r: number, c: number) => r * board.value.size + c;
 
-  const inside = (r: number, c: number) =>
-    r >= 0 && r < N && c >= 0 && c < N;
+  const validMoves = computed<Pos[]>(() => {
+    const b = board.value;
+    const v = moveVariant.value;
+    if (!b.current) return [];
 
-  const offsets = computed(() => MOVE_OFFSETS[moveVariant.value]);
+    return MOVE_OFFSETS[v]
+      .map(o => ({ r: b.current!.r + o.r, c: b.current!.c + o.c }))
+      .filter(p =>
+        p.r >= 0 &&
+        p.c >= 0 &&
+        p.r < b.size &&
+        p.c < b.size &&
+        b.cells[idx(p.r, p.c)] === 0
+      );
+  });
 
-  function validMovesFrom(pos: Pos): Pos[] {
-    const res: Pos[] = [];
-    for (const o of offsets.value) {
-      const r = pos.r + o.r;
-      const c = pos.c + o.c;
-      if (inside(r, c) && board.value[idx(r, c)] === 0) {
-        res.push({ r, c });
-      }
-    }
-    return res;
-  }
+  const deadEnd = computed(() => {
+    const b = board.value;
+    return !!b.current && validMoves.value.length === 0 && b.cells.some(x => x === 0);
+  });
 
-  const validMoves = computed<Pos[]>(() =>
-    currentPos.value ? validMovesFrom(currentPos.value) : []
-  );
-
-  /**
-   * 🔥 Dead-end réel :
-   * - une position existe
-   * - aucun coup possible
-   * - la grille n'est PAS complète
-   */
-  const deadEnd = computed(() =>
-    !!currentPos.value &&
-    validMoves.value.length === 0 &&
-    board.value.some(v => v === 0)
-  );
-
-  function isValidTarget(r: number, c: number): boolean {
-    if (!currentPos.value) return true;
+  function isValidTarget(r: number, c: number) {
+    const b = board.value;
+    if (!b.current) return true;
     return validMoves.value.some(p => p.r === r && p.c === c);
   }
 
-  return {
-    validMoves,
-    isValidTarget,
-    deadEnd,
-  };
+  return { validMoves, isValidTarget, deadEnd };
 }

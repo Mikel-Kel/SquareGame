@@ -2,11 +2,6 @@
 import type { Ref } from "vue";
 import type { Pos } from "./useBoard";
 
-/**
- * useSolveRunner
- * - Orchestration UI du solver (async, delay, états)
- * - Aucun calcul algorithmique
- */
 export function useSolveRunner(
   board: Ref<number[]>,
   path: Ref<Pos[]>,
@@ -27,33 +22,35 @@ export function useSolveRunner(
     isSolving.value = true;
     noSolution.value = false;
 
-    // Copie de travail STRICTE (on ne modifie rien)
-    const copy = board.value.slice();
+    try {
+      // Copie de travail
+      const copy = board.value.slice();
 
-    // Étape suivante à poser
-    const startStep = path.value.length + 1;
+      // ✅ Cohérence: la case courante doit être "occupée"
+      const cur = currentPos.value;
+      copy[idx(cur.r, cur.c)] = path.value.length; // (souvent déjà vrai)
 
-    const result = solveFrom(copy, currentPos.value, startStep);
+      const startStep = path.value.length + 1;
 
-    if (!result) {
-      noSolution.value = true;
+      const result = solveFrom(copy, cur, startStep);
+
+      if (!result || result.length === 0) {
+        // result.length === 0 => déjà fini (rare) ou solver a renvoyé vide
+        noSolution.value = true;
+        return;
+      }
+
+      for (const p of result) {
+        await sleep(stepDelayMs.value);
+
+        board.value[idx(p.r, p.c)] = path.value.length + 1;
+        path.value.push(p);
+        currentPos.value = p;
+      }
+    } finally {
       isSolving.value = false;
-      return;
     }
-
-    // Animation progressive
-    for (const p of result) {
-      await sleep(stepDelayMs.value);
-
-      board.value[idx(p.r, p.c)] = path.value.length + 1;
-      path.value.push(p);
-      currentPos.value = p;
-    }
-
-    isSolving.value = false;
   }
 
-  return {
-    runSolution
-  };
+  return { runSolution };
 }

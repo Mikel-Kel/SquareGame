@@ -1,57 +1,61 @@
-import { ref } from "vue";
+// src/composables/useBoard.ts
+import { ref, computed } from "vue";
+import type { BoardState, Pos } from "./BoardState";
 
-/* =======================
-   Types
-======================= */
-export type Cell = number;
-export type Pos = { r: number; c: number };
+export function useBoard(size: number) {
+  const state = ref<BoardState>({
+    size,
+    cells: Array(size * size).fill(0),
+    path: [],
+    current: null,
+  });
 
-/* =======================
-   Board composable
-======================= */
-export function useBoard(N: number) {
-  const board = ref<Cell[]>(Array(N * N).fill(0));
-  const path = ref<Pos[]>([]);
-  const currentPos = ref<Pos | null>(null);
+  const idx = (r: number, c: number) => r * size + c;
 
-  function idx(r: number, c: number): number {
-    return r * N + c;
-  }
-
-  function play(r: number, c: number): void {
+  function play(r: number, c: number) {
     const k = idx(r, c);
+    if (state.value.cells[k] !== 0) return;
 
-    // 🔒 garde-fou absolu
-    if (board.value[k] !== 0) return;
+    const step = state.value.path.length + 1;
+    state.value.cells[k] = step;
 
-    board.value[k] = path.value.length + 1;
     const pos: Pos = { r, c };
-    path.value.push(pos);
-    currentPos.value = pos;
+    state.value.path.push(pos);
+    state.value.current = pos;
   }
 
-  function undo(): void {
-    if (path.value.length === 0) return;
+  function undo() {
+    const last = state.value.path.pop();
+    if (!last) return;
 
-    const last = path.value.pop()!;
-    board.value[idx(last.r, last.c)] = 0;
-
-    currentPos.value =
-      path.value.length > 0
-        ? path.value[path.value.length - 1]!
-        : null;
+    state.value.cells[idx(last.r, last.c)] = 0;
+    state.value.current =
+      state.value.path[state.value.path.length - 1] ?? null;
   }
 
-  function reset(): void {
-    board.value = Array(N * N).fill(0);
-    path.value = [];
-    currentPos.value = null;
+  function reset() {
+    state.value.cells = Array(size * size).fill(0);
+    state.value.path = [];
+    state.value.current = null;
   }
+
+  /* =======================
+     Read-only helpers
+  ======================= */
+  const cells = computed(() => state.value.cells);
+  const path = computed(() => state.value.path);
+  const currentPos = computed(() => state.value.current);
 
   return {
-    board,
+    // source de vérité
+    state,
+
+    // helpers sûrs (réactifs)
+    cells,
     path,
     currentPos,
+
+    // actions
     idx,
     play,
     undo,

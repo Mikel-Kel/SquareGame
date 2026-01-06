@@ -1,56 +1,67 @@
 // src/composables/useTip.ts
 import { computed, type Ref } from "vue";
-import type { Pos } from "./useBoard";
-import type { MoveVariant } from "./moveOffsets";
-import { validMovesFromBoard } from "./useMoves";
+import type { BoardState, Pos } from "./BoardState";
+import { MOVE_OFFSETS, type MoveVariant } from "./moveOffsets";
 
-/**
- * useTip — logique Warnsdorff (pure UI helper)
- */
 export function useTip(
-  board: Ref<number[]>,
-  N: number,
-  currentPos: Ref<Pos | null>,
-  validMoves: Ref<Pos[]>,
+  board: Ref<BoardState>,
   moveVariant: Ref<MoveVariant>
 ) {
-  function idx(r: number, c: number): number {
-    return r * N + c;
+  const idx = (r: number, c: number) => r * board.value.size + c;
+
+  function validMovesFrom(pos: Pos): Pos[] {
+    const b = board.value;
+    const v = moveVariant.value;
+
+    return MOVE_OFFSETS[v]
+      .map(o => ({ r: pos.r + o.r, c: pos.c + o.c }))
+      .filter(p =>
+        p.r >= 0 &&
+        p.c >= 0 &&
+        p.r < b.size &&
+        p.c < b.size &&
+        b.cells[idx(p.r, p.c)] === 0
+      );
   }
 
-  function degree(boardArr: number[], to: Pos): number {
-    const k = idx(to.r, to.c);
+  function degree(to: Pos): number {
+    // on simule "to occupé" sur une copie
+    const b = board.value;
+    const copy = b.cells.slice();
+    copy[idx(to.r, to.c)] = -1;
 
-    boardArr[k] = -1;
-    const d = validMovesFromBoard(
-      boardArr,
-      N,
-      to,
-      moveVariant.value
-    ).length;
-    boardArr[k] = 0;
-
-    return d;
+    // compter les moves depuis to, en lisant copy
+    const v = moveVariant.value;
+    return MOVE_OFFSETS[v]
+      .map(o => ({ r: to.r + o.r, c: to.c + o.c }))
+      .filter(p =>
+        p.r >= 0 &&
+        p.c >= 0 &&
+        p.r < b.size &&
+        p.c < b.size &&
+        copy[idx(p.r, p.c)] === 0
+      ).length;
   }
 
   const bestTipMove = computed<Pos | null>(() => {
-    if (!currentPos.value) return null;
+    const b = board.value;
+    if (!b.current) return null;
 
-    const tmp = board.value.slice();
-    let best: Pos | null = null;
-    let bestDeg = Infinity;
+    const moves = validMovesFrom(b.current);
+    if (moves.length === 0) return null;
 
-    for (const p of validMoves.value) {
-      const d = degree(tmp, p);
+    let best = moves[0];
+    let bestDeg = degree(best);
+
+    for (const m of moves.slice(1)) {
+      const d = degree(m);
       if (d < bestDeg) {
         bestDeg = d;
-        best = p;
+        best = m;
       }
     }
     return best;
   });
 
-  return {
-    bestTipMove
-  };
+  return { bestTipMove };
 }

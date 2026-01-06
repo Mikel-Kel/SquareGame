@@ -1,5 +1,6 @@
+// src/composables/useGameState.ts
 import { ref, watch, computed, type Ref } from "vue";
-import type { Pos } from "./useBoard";
+import type { BoardState, Pos } from "./BoardState";
 import type { MoveVariant } from "./moveOffsets";
 
 export function useGameState(params: {
@@ -19,6 +20,7 @@ export function useGameState(params: {
 
   // solver
   runSolution: () => Promise<void> | void;
+  noSolution: Ref<boolean>; // 👈 global solver state
 
   // config
   moveVariant: Ref<MoveVariant>;
@@ -34,6 +36,7 @@ export function useGameState(params: {
     isValidTarget,
     validMoves,
     runSolution,
+    noSolution,
     moveVariant,
   } = params;
 
@@ -47,7 +50,7 @@ export function useGameState(params: {
   const showStartMessage = ref(true);
 
   /* =======================
-     Dead end detection
+     Dead end (LOCAL, UI)
   ======================= */
   const deadEnd = computed(() => {
     if (!currentPos.value) return false;
@@ -69,19 +72,49 @@ export function useGameState(params: {
   /* =======================
      Actions
   ======================= */
+
   function onPlay(r: number, c: number) {
+    // 🔒 règles de base
     if (board.value[idx(r, c)] !== 0) return;
     if (!isValidTarget(r, c)) return;
 
     play(r, c);
 
+    // 🎨 UI
     showTip.value = false;
     showStartMessage.value = false;
+
+    // ✅ IMPORTANT :
+    // Toute action manuelle invalide un ancien "no solution"
+    noSolution.value = false;
+  }
+
+  function onUndo() {
+    undo();
+
+    // ✅ Un undo peut rouvrir une solution
+    noSolution.value = false;
+
+    // optionnel mais sain
+    showTip.value = false;
+  }
+
+  function onReset() {
+    reset();
+
+    noSolution.value = false;
+    showTip.value = false;
+
+    showStartMessage.value = true;
+    hideStartMessageAfterDelay();
   }
 
   watch(moveVariant, () => {
     reset();
+
+    noSolution.value = false;
     showTip.value = false;
+
     showStartMessage.value = true;
     hideStartMessageAfterDelay();
   });
@@ -99,8 +132,8 @@ export function useGameState(params: {
 
     // actions
     onPlay,
+    onUndo,
+    onReset,
     runSolution,
-    undo,
-    reset,
   };
 }

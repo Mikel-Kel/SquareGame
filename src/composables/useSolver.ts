@@ -1,159 +1,61 @@
 // src/composables/useSolver.ts
-import type { Ref } from "vue";
-import type { Pos } from "./useBoard";
-import type { MoveVariant } from "./moveOffsets";
-import { validMovesFromBoard } from "./useMoves";
+import type { Pos } from "@/composables/BoardState";
+import { MOVE_OFFSETS, type MoveVariant } from "@/composables/moveOffsets";
 
-/**
- * useSolver — version robuste et stable
- *
- * Supporte DEUX APIs :
- *
- * 1) API moderne (recommandée)
- *    useSolver(boardRef, N, moveVariantRef)
- *
- * 2) API legacy (tolérée)
- *    useSolver(getBoard, idx, N, getCurrentPos, getMoveVariant)
- *
- * ➜ Le solver reste PUR : aucun état Vue interne
- * ➜ Protection forte contre moveVariant undefined
- * ➜ Instrumentation prête (stats)
- */
+export function solveBoard(
+  board: { size: number; cells: number[] },
+  start: Pos,
+  variant: MoveVariant
+): Pos[] | null {
 
-type SolverContext = {
-  N: number;
-  idx: (r: number, c: number) => number;
-  getMoveVariant: () => MoveVariant;
-};
+  const N = board.size;
+  const idx = (r: number, c: number) => r * N + c;
 
-export function useSolver(...args: any[]) {
-  /* =====================================================
-     Normalisation des paramètres
-  ===================================================== */
-  let ctx: SolverContext;
-
-  if (args.length === 3) {
-    // --- API moderne ---
-    const _boardRef = args[0] as Ref<number[]>;
-    const N = args[1] as number;
-    const mv = args[2] as Ref<MoveVariant> | MoveVariant | undefined;
-
-    ctx = {
-      N,
-      idx: (r, c) => r * N + c,
-      getMoveVariant: () => {
-        const v = (mv as any)?.value ?? mv;
-        if (v !== "knight" && v !== "square") {
-          throw new Error(
-            `useSolver: moveVariant invalide ou undefined (${String(v)})`
-          );
-        }
-        return v;
-      }
-    };
-
-    void _boardRef; // volontairement inutilisé (solver pur)
-
-  } else if (args.length === 5) {
-    // --- API legacy ---
-    const idx = args[1] as (r: number, c: number) => number;
-    const N = args[2] as number;
-    const getMoveVariant = args[4] as () => MoveVariant;
-
-    ctx = {
-      N,
-      idx,
-      getMoveVariant
-    };
-
-  } else {
-    throw new Error(
-      `useSolver: nombre d'arguments invalide (${args.length}). Attendu 3 ou 5.`
-    );
+  function inside(r: number, c: number) {
+    return r >= 0 && c >= 0 && r < N && c < N;
   }
 
-  /* =====================================================
-     Instrumentation (désactivée par défaut côté UI)
-  ===================================================== */
-  let nodesVisited = 0;
-  let maxDepth = 0;
-
-  function resetStats() {
-    nodesVisited = 0;
-    maxDepth = 0;
+  function validMoves(pos: Pos): Pos[] {
+    return MOVE_OFFSETS[variant]
+      .map(o => ({ r: pos.r + o.r, c: pos.c + o.c }))
+      .filter(p =>
+        inside(p.r, p.c) &&
+        board.cells[idx(p.r, p.c)] === 0
+      );
   }
 
-  function getStats() {
-    return {
-      nodesVisited,
-      maxDepth
-    };
-  }
-
-  /* =====================================================
-     Heuristique de Warnsdorff (degree)
-  ===================================================== */
-  function degree(boardArr: number[], to: Pos): number {
-    const k = ctx.idx(to.r, to.c);
-
-    boardArr[k] = -1; // marquage temporaire
-    const d = validMovesFromBoard(
-      boardArr,
-      ctx.N,
-      to,
-      ctx.getMoveVariant()
-    ).length;
-    boardArr[k] = 0; // restauration
-
+  /** 🔑 WARNDORFF DEGREE */
+  function degree(pos: Pos): number {
+    const k = idx(pos.r, pos.c);
+    board.cells[k] = -1;                 // marquage temporaire
+    const d = validMoves(pos).length;
+    board.cells[k] = 0;                  // restauration
     return d;
   }
 
-  /* =====================================================
-     Solver récursif (Warnsdorff + backtracking)
-  ===================================================== */
-  function solveFrom(
-    boardArr: number[],
-    pos: Pos,
-    step: number
-  ): Pos[] | null {
-    nodesVisited++;
-    maxDepth = Math.max(maxDepth, step);
+  function dfs(pos: Pos, step: number): Pos[] | null {
+    if (step > N * N) return [];
 
-    if (step > ctx.N * ctx.N) {
-      return [];
-    }
-
-    const moves = validMovesFromBoard(
-      boardArr,
-      ctx.N,
-      pos,
-      ctx.getMoveVariant()
-    )
-      .map(p => ({ p, d: degree(boardArr, p) }))
-      .sort((a, b) => a.d - b.d)
-      .map(x => x.p);
+    const moves = validMoves(pos)
+      .map(m => ({ m, d: degree(m) }))
+      .sort((a, b) => a.d - b.d)          // 🔥 Warnsdorff
+      .map(x => x.m);
 
     for (const m of moves) {
-      const k = ctx.idx(m.r, m.c);
-      boardArr[k] = step;
+      const k = idx(m.r, m.c);
+      board.cells[k] = step;
 
-      const rest = solveFrom(boardArr, m, step + 1);
-      if (rest) {
-        return [m, ...rest];
-      }
+      const rest = dfs(m, step + 1);
+      if (rest) return [m, ...rest];
 
-      boardArr[k] = 0; // backtrack
+      board.cells[k] = 0;                 // backtrack
     }
 
     return null;
   }
 
-  /* =====================================================
-     API exposée
-  ===================================================== */
-  return {
-    solveFrom,
-    resetStats,
-    getStats
-  };
+  const startStep =
+    board.cells.filter(v => v > 0).length + 1;
+
+  return dfs(start, startStep);
 }
