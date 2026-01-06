@@ -6,12 +6,13 @@ import type { Pos } from "@/composables/useBoard";
 import { useMoves, validMovesFromBoard } from "@/composables/useMoves";
 import type { MoveVariant } from "@/composables/moveOffsets";
 import { useSolver } from "@/composables/useSolver";
+import { useTip } from "@/composables/useTip";
+import { useSolveRunner } from "@/composables/useSolveRunner";
 
 /* =======================
    Configuration
 ======================= */
 const N = 10;
-
 
 /* =======================
    State
@@ -29,16 +30,35 @@ const moves = useMoves(
 
 const { validMoves, isValidTarget } = moves;
 
+const showTip = ref(false);
+const showValidMoves = ref(true);
+const isSolving = ref(false);
+const noSolution = ref(false);
+
 const { solveFrom } = useSolver(
   board,
   N,  
   moveVariant
 );
 
-const showTip = ref(false);
-const showValidMoves = ref(true);
-const isSolving = ref(false);
-const noSolution = ref(false);
+const { bestTipMove } = useTip(
+  board,
+  N,
+  currentPos,
+  validMoves,
+  moveVariant
+);
+
+const { runSolution } = useSolveRunner(
+  board,
+  path,
+  currentPos,
+  idx,
+  solveFrom,
+  stepDelayMs,
+  isSolving,
+  noSolution
+);
 
 const showSettings = ref(false);
 const showInfo = ref(false);
@@ -50,9 +70,6 @@ const showStartMessage = ref(true);
    Helpers
 ======================= */
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 /* Auto-hide start message */
 function hideStartMessageAfterDelay() {
   setTimeout(() => {
@@ -65,37 +82,6 @@ hideStartMessageAfterDelay();
 /* =======================
    Tip (Warnsdorff)
 ======================= */
-
-function degree(boardArr: number[], to: Pos): number {
-  boardArr[idx(to.r, to.c)] = -1;
-  const d = validMovesFromBoard(
-    boardArr,
-    N,
-    to,
-    moveVariant.value
-  ).length;
-  boardArr[idx(to.r, to.c)] = 0;
-  return d;
-}
-
-
-const bestTipMove = computed<Pos | null>(() => {
-  if (!currentPos.value) return null;
-
-  const tmp = board.value.slice();
-  let best: Pos | null = null;
-  let bestDeg = Infinity;
-
-  for (const p of validMoves.value) {
-    const d = degree(tmp, p);
-    if (d < bestDeg) {
-      bestDeg = d;
-      best = p;
-    }
-  }
-  return best;
-});
-
 
 function validMovesFromSolver(_boardArr: number[], _pos: Pos): Pos[] {
   const res: Pos[] = [];
@@ -122,39 +108,6 @@ function onPlay(r: number, c: number) {
   showTip.value = false
   showStartMessage.value = false
 }
-
-async function runSolution(): Promise<void> {
-
-  if (!currentPos.value || isSolving.value) return;
-
-  isSolving.value = true;
-  noSolution.value = false;
-
-  // ✅ Source de vérité = path (évite board/path désync)
-  const copy = Array(N * N).fill(0);
-  for (let i = 0; i < path.value.length; i++) {
-    const p = path.value[i]!;
-    copy[idx(p.r, p.c)] = i + 1;
-  }
-
-  const start = path.value.length + 1;
-  const result = solveFrom(copy, currentPos.value, start);
-
-  if (!result) {
-    noSolution.value = true;
-    isSolving.value = false;
-    return;
-  }
-
-  // ✅ Appliquer via play() (évite incohérences state)
-  for (const p of result) {
-    await sleep(stepDelayMs.value);
-    play(p.r, p.c);
-  }
-
-  isSolving.value = false;
-}
-
 
 
 /* =======================
