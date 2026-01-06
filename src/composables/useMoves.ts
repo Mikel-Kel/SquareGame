@@ -61,6 +61,18 @@ export function useMoves(
     currentPos.value ? validMovesFrom(currentPos.value) : []
   );
 
+  /**
+   * 🔥 Dead-end réel :
+   * - une position existe
+   * - aucun coup possible
+   * - la grille n'est PAS complète
+   */
+  const deadEnd = computed(() =>
+    !!currentPos.value &&
+    validMoves.value.length === 0 &&
+    board.value.some(v => v === 0)
+  );
+
   function isValidTarget(r: number, c: number): boolean {
     if (!currentPos.value) return true;
     return validMoves.value.some(p => p.r === r && p.c === c);
@@ -69,5 +81,6 @@ export function useMoves(
   return {
     validMoves,
     isValidTarget,
+    deadEnd,
   };
 }

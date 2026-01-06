@@ -27,13 +27,10 @@ export function useSolveRunner(
     isSolving.value = true;
     noSolution.value = false;
 
-    // Copie de travail
+    // Copie de travail STRICTE (on ne modifie rien)
     const copy = board.value.slice();
 
-    // 🔑 marquer correctement la position courante
-    const startIndex = idx(currentPos.value.r, currentPos.value.c);
-    copy[startIndex] = path.value.length;
-
+    // Étape suivante à poser
     const startStep = path.value.length + 1;
 
     const result = solveFrom(copy, currentPos.value, startStep);

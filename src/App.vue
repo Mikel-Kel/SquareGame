@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 import AppIcon from "@/components/AppIcon.vue";
+
 import { useBoard } from "@/composables/useBoard";
-import type { Pos } from "@/composables/useBoard";
-import { useMoves, validMovesFromBoard } from "@/composables/useMoves";
+import { useMoves } from "@/composables/useMoves";
 import type { MoveVariant } from "@/composables/moveOffsets";
 import { useSolver } from "@/composables/useSolver";
 import { useTip } from "@/composables/useTip";
 import { useSolveRunner } from "@/composables/useSolveRunner";
+import { useGameState } from "@/composables/useGameState";
 
 /* =======================
    Configuration
@@ -15,39 +16,26 @@ import { useSolveRunner } from "@/composables/useSolveRunner";
 const N = 10;
 
 /* =======================
-   State
+   Core game state
 ======================= */
 const { board, path, currentPos, idx, play, undo, reset } = useBoard(N);
 
 const stepDelayMs = ref(50);
 const moveVariant = ref<MoveVariant>("square");
-const moves = useMoves(
-  board,
-  N,
-  currentPos,
-  moveVariant
-);
 
-const { validMoves, isValidTarget } = moves;
+/* =======================
+   Moves / rules
+======================= */
+const { validMoves, isValidTarget } =
+  useMoves(board, N, currentPos, moveVariant);
 
-const showTip = ref(false);
-const showValidMoves = ref(true);
+/* =======================
+   Solver
+======================= */
 const isSolving = ref(false);
 const noSolution = ref(false);
 
-const { solveFrom } = useSolver(
-  board,
-  N,  
-  moveVariant
-);
-
-const { bestTipMove } = useTip(
-  board,
-  N,
-  currentPos,
-  validMoves,
-  moveVariant
-);
+const { solveFrom } = useSolver(board, N, moveVariant);
 
 const { runSolution } = useSolveRunner(
   board,
@@ -60,83 +48,56 @@ const { runSolution } = useSolveRunner(
   noSolution
 );
 
-const showSettings = ref(false);
-const showInfo = ref(false);
-
-/* Start message */
-const showStartMessage = ref(true);
-
-/* =======================
-   Helpers
-======================= */
-
-/* Auto-hide start message */
-function hideStartMessageAfterDelay() {
-  setTimeout(() => {
-    showStartMessage.value = false;
-  }, 2000);
-}
-hideStartMessageAfterDelay();
-
-
 /* =======================
    Tip (Warnsdorff)
 ======================= */
-
-function validMovesFromSolver(_boardArr: number[], _pos: Pos): Pos[] {
-  const res: Pos[] = [];
-  for (const p of validMoves.value) {
-    res.push(p);
-  }
-  return res;
-}
+const { bestTipMove } =
+  useTip(board, N, currentPos, validMoves, moveVariant);
 
 /* =======================
-   Solver
+   UI / orchestration state
 ======================= */
+const game = useGameState({
+  board,
+  path,
+  currentPos,
+  idx,
+  play,
+  undo,
+  reset,
+  isValidTarget,
+  validMoves,     // ← nécessaire pour deadEnd
+  runSolution,
+  moveVariant,
+});
 
-function onPlay(r: number, c: number) {
-  // 🔒 1. cellule déjà occupée
-  if (board.value[idx(r, c)] !== 0) return
-
-  // 🔒 2. règles de déplacement
-  if (!isValidTarget(r, c)) return
-
-  play(r, c)
-
-  // 🎨 UI
-  showTip.value = false
-  showStartMessage.value = false
-}
-
-
-/* =======================
-   Actions
-======================= */
-
-watch(moveVariant, () => {
-  reset()
-  showTip.value = false
-  showStartMessage.value = true
-})
+const {
+  showTip,
+  showValidMoves,
+  showSettings,
+  showInfo,
+  showStartMessage,
+  deadEnd,
+  onPlay,
+} = game;
 
 /* =======================
-   Grid
+   Grid helpers
 ======================= */
 const cells = computed(() => {
-  const out:{r:number;c:number;i:number}[]=[];
-  for (let r=0;r<N;r++)
-    for (let c=0;c<N;c++)
-      out.push({ r, c, i: idx(r,c) });
+  const out: { r: number; c: number; i: number }[] = [];
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      out.push({ r, c, i: idx(r, c) });
+    }
+  }
   return out;
 });
 </script>
 
-
 /*========================
    Template
 ========================*/
-
 <template>
 <main class="page">
 
@@ -182,6 +143,16 @@ const cells = computed(() => {
         @click="showStartMessage = false"
       >
         Start with any cell !
+      </div>
+    </transition>
+    
+    <!-- DEAD END MESSAGE -->
+    <transition name="fade">
+      <div
+        v-if="deadEnd"
+        class="dead-end-msg"
+      >
+        Dead end — no valid moves 😕
       </div>
     </transition>
 
@@ -258,11 +229,9 @@ const cells = computed(() => {
 </main>
 </template>
 
-
 /*========================
    Styles
 ========================*/
-
 <style scoped>
   .page {
   max-width: 980px;
@@ -388,6 +357,19 @@ button:disabled {
   background: rgba(255,255,255,0.85); /* optionnel mais recommandé */
   z-index: 10;
   pointer-events: auto;
+}
+
+.dead-end-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: #991b1b;              /* rouge sombre */
+  background: rgba(255,255,255,0.85);
+  z-index: 9;
+  pointer-events: none;        /* ne bloque pas undo/reset */
 }
 
 /* FADE */
