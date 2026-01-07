@@ -1,9 +1,12 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import svgLoader from 'vite-svg-loader'
-import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import svgLoader from "vite-svg-loader";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  // 👇 IMPORTANT pour GitHub Pages
+  base: "/SquareGame/",
+
   plugins: [
     vue(),
     svgLoader({
@@ -11,18 +14,19 @@ export default defineConfig({
       svgoConfig: {
         plugins: [
           {
-            name: 'removeAttrs',
+            name: "removeAttrs",
             params: {
-              attrs: '(fill|stroke|style)'
-            }
-          }
-        ]
-      }
-    })
+              attrs: "(fill|stroke|style)",
+            },
+          },
+        ],
+      },
+    }),
   ],
+
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  }
-})
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+});

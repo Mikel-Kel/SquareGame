@@ -5,8 +5,16 @@ import Info from '@/assets/icons/info.svg?raw'
 import Refresh from '@/assets/icons/refresh.svg?raw'
 import Tool from '@/assets/icons/tool.svg?raw'
 import Lightbulb from '@/assets/icons/lightbulb.svg?raw'
+import Close from '@/assets/icons/close.svg?raw'
 
-type IconName = 'back' | 'help' | 'info' | 'refresh' | 'tool' | 'lightbulb'
+type IconName =
+  | 'back'
+  | 'help'
+  | 'info'
+  | 'refresh'
+  | 'tool'
+  | 'lightbulb'
+  | 'close'
 
 const props = defineProps<{
   name: IconName
@@ -19,7 +27,8 @@ const rawIcons: Record<IconName, string> = {
   info: Info,
   refresh: Refresh,
   tool: Tool,
-  lightbulb: Lightbulb
+  lightbulb: Lightbulb,
+  close: Close
 }
 
 function cleanSvg(svg: string) {
@@ -35,10 +44,7 @@ function cleanSvg(svg: string) {
 </script>
 
 <template>
-  <span
-    class="icon"
-    v-html="cleanSvg(rawIcons[name])"
-  />
+  <span class="icon" v-html="cleanSvg(rawIcons[name])" />
 </template>
 
 <style scoped>

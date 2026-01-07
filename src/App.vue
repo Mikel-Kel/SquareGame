@@ -174,6 +174,14 @@ const currentPos = computed(() => state.value.current);
     <AppIcon name="lightbulb" :size="32" />
   </button>
 
+  <button
+    @click="runSolution"
+    :disabled="!currentPos || isSolving || noSolution"
+    title="Solve the board"
+  >
+    <AppIcon name="help" :size="32" />
+  </button>
+
   <button @click="onReset">
     <AppIcon name="refresh" :size="32" />
   </button>
@@ -224,58 +232,142 @@ const currentPos = computed(() => state.value.current);
   </section>
 </div>
 
-<button
-  class="solve-btn"
-  @click="runSolution"
-  :disabled="!currentPos || isSolving || noSolution"
->
-  <AppIcon name="help" :size="36" />
-</button>
-
 <!-- SETTINGS -->
 <div v-if="showSettings" class="modal" @click.self="showSettings = false">
   <div class="modal-content">
-    <button class="modal-close" @click="showSettings = false">✕</button>
+    <button
+      class="modal-close"
+      @click="showSettings = false"
+      aria-label="Close settings"
+    >
+      <AppIcon name="close" :size="18" />
+    </button>
 
-    <h3>Settings</h3>
+    <h3>Game Settings</h3>
+    <div class="section-sep"></div>
+
+    <h4>🔀 Movement style</h4>
+    <p>
+      Choose how the piece moves on the board.
+    </p>
 
     <label>
-      Variant
       <select v-model="moveVariant">
-        <option value="knight">Knight</option>
-        <option value="square">Square</option>
+        <option value="knight">Knight – chess move</option>
+        <option value="square">Square – jump over cells</option>
       </select>
     </label>
 
-    <label>
-      Speed {{ stepDelayMs }} ms
-      <input
-        type="range"
-        min="50"
-        max="2000"
-        step="50"
-        v-model="stepDelayMs"
-      />
-    </label>
+    <p style="font-size:0.85em; opacity:0.7;">
+      Changing this resets the board.
+    </p>
+    <div class="section-sep"></div>
 
-    <label class="checkbox">
-      <input type="checkbox" v-model="showValidMoves" />
-      Show valid moves
-    </label>
+    <h4 style="margin-top:16px;">⏱️ Solver speed</h4>
+    <p>
+      Controls how fast the solution is animated.
+    </p>
+
+    <input
+      type="range"
+      min="50"
+      max="2000"
+      step="50"
+      v-model="stepDelayMs"
+    />
+    <p style="font-size:0.85em; opacity:0.7;">
+      Slow → easier to follow · Fast → instant result
+    </p>
+    <div class="section-sep"></div>
+
+    <h4 style="margin-top:16px;">✨ Visual help</h4>
+      <div class="settings-center">
+        <label class="checkbox">
+          <input type="checkbox" v-model="showValidMoves" />
+          Show valid moves
+        </label>
+      </div>
+
+      <hr style="margin:16px 0; opacity:0.3;">
+
+    <p style="font-size:0.85em; opacity:0.7;">
+      You can reset the board at any time using the refresh button.
+    </p>
   </div>
 </div>
 
 <!-- INFO -->
 <div v-if="showInfo" class="modal" @click.self="showInfo = false">
   <div class="modal-content">
-    <button class="modal-close" @click="showInfo = false">✕</button>
+    <button
+      class="modal-close"
+      @click="showInfo = false"
+      aria-label="Close info"
+    >
+      <AppIcon name="close" :size="18" />
+    </button>
 
-    <h3>Rules</h3>
-    <p>Visit every cell exactly once.</p>
-    <ul>
-      <li><strong>Knight</strong> – chess knight moves</li>
-      <li><strong>Square</strong> – jump over two cells</li>
-    </ul>
+    <h3>Square Game</h3>
+    <p style="opacity:0.7; margin-top:-6px;">
+      Simple rules. Tricky paths.
+    </p>
+    <div class="section-sep"></div>
+
+    <h4>🎯 Goal</h4>
+    <p>
+      Visit <strong>every cell exactly once</strong>.
+    </p>
+    <p>
+      You can start on <strong>any cell</strong>, but each move must follow
+      the selected movement rule.
+    </p>
+    <div class="section-sep"></div>
+
+    <h4>🧠 Movement rules</h4>
+
+    <p><strong>Knight</strong><br>
+      Same moves as a chess knight.<br>
+      Jump in an “L” shape.
+    </p>
+
+    <p><strong>Square</strong><br>
+      Jump over two cells.<br>
+      Horizontally, vertically, or diagonally.
+    </p>
+    <div class="section-sep"></div>
+
+    <h4>💡 Need help?</h4>
+    <div class="info-help">
+      <div class="info-help-row">
+        <span class="info-help-icon">
+          <AppIcon name="lightbulb" :size="20" />
+        </span>
+        <span>
+          <strong>Tip</strong> highlights a good next move.
+        </span>
+      </div>
+
+      <div class="info-help-row">
+        <span class="info-help-icon">
+          <AppIcon name="help" :size="20" />
+        </span>
+        <span>
+          <strong>Solve</strong> lets the game try to finish the board for you.
+        </span>
+      </div>
+    </div>
+
+    <p style="opacity:0.75;">
+      Some positions have <strong>no possible solution</strong> —
+      that’s part of the challenge 😉
+    </p>
+
+    <hr style="margin:16px 0; opacity:0.3;">
+
+    <p style="font-size:0.9em; opacity:0.75;">
+      Created by <strong>Antonio Macchia & Michel Vuilleumier</strong><br>
+      First release in 1986 on IBM PC with a Pascal/DOS compiler !
+    </p>
   </div>
 </div>
 
@@ -346,6 +438,17 @@ button {
 button:disabled {
   color: #9ca3af;
   cursor: default;
+}
+
+.section-sep {
+  height: 1px;
+  margin: 16px 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(0,0,0,0.15),
+    transparent
+  );
 }
 
 /* BOARD */
@@ -482,6 +585,37 @@ button:disabled {
   z-index: 1000;
 }
 
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12); /* bleu léger */
+
+  color: #2563eb;          /* NOIR lisible */
+  opacity: 1;
+
+  z-index: 10;
+
+  transition: background 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(37, 99, 235, 0.22);
+  transform: scale(1.05);
+}
+.modal-close:active {
+  background: rgba(0,0,0,0.12);
+}
+
 .modal-content {
   position: relative;
   background: white;
@@ -492,9 +626,45 @@ button:disabled {
   box-shadow: 0 20px 40px rgba(0,0,0,0.25);
 }
 
+.settings-center {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
 .checkbox {
   display: flex;
   gap: 8px;
   align-items: center;
+  font-size: 0.95em;
 }
+
+.info-help {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px auto;
+  width: fit-content;
+}
+
+.info-help-row {
+  display: flex;
+  align-items: center;     /* ✅ centre verticalement icône + texte */
+  gap: 12px;
+
+  color: #1e3a8a;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.info-help-icon {
+  width: 22px;             /* “colonne” icône stable */
+  height: 22px;
+  flex: 0 0 22px;
+
+  display: flex;
+  align-items: center;     /* ✅ centre le SVG dans sa boîte */
+  justify-content: center;
+}
+
 </style>
