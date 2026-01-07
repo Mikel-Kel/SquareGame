@@ -1,6 +1,6 @@
 // src/composables/useSolveRunner.ts
 import type { Ref } from "vue";
-import type { Pos } from "./useBoard";
+import type { Pos } from "@/composables/BoardState";
 
 export function useSolveRunner(
   board: Ref<number[]>,

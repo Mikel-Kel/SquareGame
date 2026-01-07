@@ -17,7 +17,7 @@ const N = 10;
    Board — SOURCE DE VÉRITÉ
 ======================= */
 const {
-  state,       // Ref<BoardState>
+  state,
   idx,
   play,
   undo,
@@ -25,13 +25,12 @@ const {
 } = useBoard(N);
 
 /* =======================
-   UI state (local)
+   UI state
 ======================= */
 const showTip = ref(false);
 const showValidMoves = ref(true);
 const showSettings = ref(false);
 const showInfo = ref(false);
-const showStartMessage = ref(true);
 
 /* =======================
    Solver / config
@@ -42,24 +41,28 @@ const isSolving = ref(false);
 const noSolution = ref(false);
 
 /* =======================
-   Fade-in / fade-out message
+   Start message (ONE-SHOT)
 ======================= */
+const startMessageId = ref(0);
+
+function triggerStartMessage() {
+  startMessageId.value++;
+}
+
 onMounted(() => {
-  setTimeout(() => {
-    showStartMessage.value = false;
-  }, 2000);
+  triggerStartMessage();
 });
 
 /* =======================
-   Moves (réactif)
+   Moves
 ======================= */
-const { validMoves, isValidTarget, deadEnd } = useMoves(
+const { isValidTarget, deadEnd } = useMoves(
   state,
   moveVariant
 );
 
 /* =======================
-   Tip (Warnsdorff local — VISUEL UNIQUEMENT)
+   Tip (Warnsdorff local)
 ======================= */
 const { bestTipMove } = useTip(
   state,
@@ -75,9 +78,7 @@ function onPlay(r: number, c: number) {
   if (!isValidTarget(r, c)) return;
 
   play(r, c);
-
   showTip.value = false;
-  showStartMessage.value = false;
   noSolution.value = false;
 }
 
@@ -89,11 +90,11 @@ function onUndo() {
 function onReset() {
   reset();
   noSolution.value = false;
-  showStartMessage.value = true;
+  triggerStartMessage();
 }
 
 /* =======================
-   Solver (isolé, board copié)
+   Solver
 ======================= */
 async function runSolution() {
   if (!state.value.current || isSolving.value) return;
@@ -127,7 +128,7 @@ async function runSolution() {
 }
 
 /* =======================
-   Helpers pour le template
+   Template helpers
 ======================= */
 const cells = computed(() => {
   const out: { r: number; c: number; i: number }[] = [];
@@ -181,23 +182,22 @@ const currentPos = computed(() => state.value.current);
 <div class="board-wrap">
   <section class="board" :style="{ gridTemplateColumns: `repeat(${N}, 1fr)` }">
 
-    <transition name="fade">
-      <div v-if="showStartMessage" class="start-msg">
-        Start with any cell !
-      </div>
-    </transition>
+    <!-- START MESSAGE -->
+    <div
+      v-if="startMessageId"
+      :key="startMessageId"
+      class="start-msg fade-msg"
+    >
+      Start with any cell !
+    </div>
 
-    <transition name="fade">
-      <div v-if="deadEnd" class="dead-end-msg">
-        Dead end — no valid moves 😕
-      </div>
-    </transition>
+    <div v-if="deadEnd" class="dead-end-msg">
+      Dead end — no valid moves 😕
+    </div>
 
-    <transition name="fade">
-      <div v-if="noSolution" class="no-solution-msg">
-        No solution possible from here 😕
-      </div>
-    </transition>
+    <div v-if="noSolution" class="no-solution-msg">
+      No solution possible from here 😕
+    </div>
 
     <button
       v-for="cell in cells"
@@ -232,14 +232,8 @@ const currentPos = computed(() => state.value.current);
   <AppIcon name="help" :size="36" />
 </button>
 
-<!-- SETTINGS / INFO -->
-<div
-  v-if="showSettings"
-  class="modal"
-  @click.self="showSettings = false"
->
-  <!-- Close button -->
-  <button class="modal-close" @click="showSettings = false">✕</button>
+<!-- SETTINGS -->
+<div v-if="showSettings" class="modal" @click.self="showSettings = false">
   <div class="modal-content">
     <button class="modal-close" @click="showSettings = false">✕</button>
 
@@ -272,35 +266,19 @@ const currentPos = computed(() => state.value.current);
 </div>
 
 <!-- INFO -->
-<div
-  v-if="showInfo"
-  class="modal"
-  @click.self="showInfo = false"
->
+<div v-if="showInfo" class="modal" @click.self="showInfo = false">
   <div class="modal-content">
-    <!-- Close button -->
     <button class="modal-close" @click="showInfo = false">✕</button>
 
     <h3>Rules</h3>
-
-    <p>
-      Visit every cell exactly once.
-    </p>
-
-    <p>
-      Moves depend on the selected variant:
-    </p>
-
+    <p>Visit every cell exactly once.</p>
     <ul>
       <li><strong>Knight</strong> – chess knight moves</li>
-      <li><strong>Square</strong> – jump over two cells horizontally, vertically, or diagonally</li>
+      <li><strong>Square</strong> – jump over two cells</li>
     </ul>
-
-    <p style="opacity:0.7; margin-top:12px">
-      Tip and solver are based on Warnsdorff heuristics.
-    </p>
   </div>
 </div>
+
 </main>
 </template>
 
@@ -432,9 +410,20 @@ button:disabled {
   font-size: 42px;
   font-weight: 600;
   color: #2563eb;
-  background: rgba(255,255,255,0.85); /* optionnel mais recommandé */
+  background: rgba(255,255,255,0.85);
   z-index: 10;
   pointer-events: none;
+}
+
+.fade-msg {
+  animation: fadeInOut 2s ease forwards;
+}
+
+@keyframes fadeInOut {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .dead-end-msg {
