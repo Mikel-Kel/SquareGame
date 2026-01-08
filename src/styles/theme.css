@@ -42,6 +42,9 @@
   --error-bg:    #FFF7ED;
   --error-text:  #9A3412;
 
+    /* === Separators === */
+  --sep-line: rgba(0,0,0,0.12);
+
   /* === Modal Close === */
   --close-bg:    rgba(37,99,235,0.12);
   --close-hover: rgba(37,99,235,0.22);

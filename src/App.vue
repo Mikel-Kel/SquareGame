@@ -409,6 +409,7 @@ const showVictory = computed(() => {
     </p>
   </div>
 </div>
+
 <!-- VICTORY -->
 <div v-if="showVictory" class="victory-msg">
   🎉 Puzzle completed!
@@ -514,6 +515,8 @@ button:disabled {
   cursor: default;
 }
 .section-sep {
+  height: 1px;
+  margin: 16px 0;
   background: linear-gradient(
     to right,
     transparent,
