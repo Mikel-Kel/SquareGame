@@ -6,6 +6,7 @@ import Refresh from '@/assets/icons/refresh.svg?raw'
 import Tool from '@/assets/icons/tool.svg?raw'
 import Lightbulb from '@/assets/icons/lightbulb.svg?raw'
 import Close from '@/assets/icons/close.svg?raw'
+import Square from '@/assets/icons/square.svg?raw'
 
 type IconName =
   | 'back'
@@ -15,6 +16,7 @@ type IconName =
   | 'tool'
   | 'lightbulb'
   | 'close'
+  | 'square'
 
 const props = defineProps<{
   name: IconName
@@ -28,10 +30,20 @@ const rawIcons: Record<IconName, string> = {
   refresh: Refresh,
   tool: Tool,
   lightbulb: Lightbulb,
-  close: Close
+  close: Close,
+  square: Square
 }
 
 function cleanSvg(svg: string) {
+  // ❗️ Icônes complexes : on NE NETTOIE PAS
+  if (props.name === 'square') {
+    return svg.replace(
+      '<svg',
+      `<svg width="${props.size ?? 32}" height="${props.size ?? 32}"`
+    )
+  }
+
+  // Icônes simples : nettoyage OK
   return svg
     .replace(/fill="[^"]*"/g, '')
     .replace(/stroke="[^"]*"/g, '')
@@ -41,6 +53,7 @@ function cleanSvg(svg: string) {
       `<svg width="${props.size ?? 32}" height="${props.size ?? 32}" fill="currentColor"`
     )
 }
+
 </script>
 
 <template>

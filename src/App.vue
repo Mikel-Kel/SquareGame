@@ -8,6 +8,10 @@ import { solveBoard } from "@/composables/useSolver";
 import { useTip } from "@/composables/useTip";
 import type { MoveVariant } from "@/composables/moveOffsets";
 
+const finishedBySolver = ref(false)
+const appVersion = __APP_VERSION__
+const buildDate = __BUILD_DATE__
+
 /* =======================
    Configuration
 ======================= */
@@ -80,16 +84,19 @@ function onPlay(r: number, c: number) {
   play(r, c);
   showTip.value = false;
   noSolution.value = false;
+  finishedBySolver.value = false
 }
 
 function onUndo() {
   undo();
   noSolution.value = false;
+  finishedBySolver.value = false
 }
 
 function onReset() {
   reset();
   noSolution.value = false;
+  finishedBySolver.value = false
   triggerStartMessage();
 }
 
@@ -101,6 +108,8 @@ async function runSolution() {
 
   isSolving.value = true;
   noSolution.value = false;
+
+  finishedBySolver.value = true;
 
   const boardCopy = {
     size: state.value.size,
@@ -141,6 +150,14 @@ const cells = computed(() => {
 const board = computed(() => state.value.cells);
 const path = computed(() => state.value.path);
 const currentPos = computed(() => state.value.current);
+
+const isCompleted = computed(() => {
+  return state.value.path.length === N * N
+})
+
+const showVictory = computed(() => {
+  return isCompleted.value && !finishedBySolver.value
+})
 </script>
 
 /*========================
@@ -148,11 +165,22 @@ const currentPos = computed(() => state.value.current);
 ========================*/
 <template>
 <main class="page">
-
 <header class="titlebar">
+
   <div class="title-center">
-    <h1>Square Game</h1>
-    <div class="subtitle">by Michel Vuilleumier</div>
+
+    <!-- LOGO + TITRE SUR UNE LIGNE -->
+    <div class="title-main">
+      <div class="title-logo">
+        <AppIcon name="square" :size="48" />
+      </div>
+      <h1>Puzzle</h1>
+    </div>
+
+    <div class="subtitle">
+      v{{ appVersion }} · {{ buildDate }}
+    </div>
+
   </div>
 
   <div class="title-icons">
@@ -163,6 +191,7 @@ const currentPos = computed(() => state.value.current);
       <AppIcon name="tool" :size="26" />
     </button>
   </div>
+
 </header>
 
 <div class="toolbar">
@@ -199,12 +228,21 @@ const currentPos = computed(() => state.value.current);
       Start with any cell !
     </div>
 
-    <div v-if="deadEnd" class="dead-end-msg">
-      Dead end — no valid moves 😕
-    </div>
-
-    <div v-if="noSolution" class="no-solution-msg">
-      No solution possible from here 😕
+    <!-- DEAD END & NO SOLUTION sMESSAGE -->   
+    <div
+      v-if="deadEnd || noSolution"
+      class="board-hint"
+    >
+      <AppIcon
+        :name="noSolution ? 'help' : 'info'"
+        :size="16"
+      />
+      <span>
+        {{ noSolution
+          ? 'No solution from here'
+          : 'No valid moves left'
+        }}
+      </span>
     </div>
 
     <button
@@ -299,6 +337,7 @@ const currentPos = computed(() => state.value.current);
 <!-- INFO -->
 <div v-if="showInfo" class="modal" @click.self="showInfo = false">
   <div class="modal-content">
+
     <button
       class="modal-close"
       @click="showInfo = false"
@@ -370,6 +409,10 @@ const currentPos = computed(() => state.value.current);
     </p>
   </div>
 </div>
+<!-- VICTORY -->
+<div v-if="showVictory" class="victory-msg">
+  🎉 Puzzle completed!
+</div>
 
 </main>
 </template>
@@ -378,36 +421,42 @@ const currentPos = computed(() => state.value.current);
    Styles
 ========================*/
 <style scoped>
-  .page {
-  max-width: 980px;
+.page {
+  background: var(--bg-app);
+  color: var(--text-main);max-width: 980px;
   margin: auto;
   padding: 12px;
 }
-
 /* HEADER */
 .titlebar {
   display: flex;
   align-items: flex-start;
-  justify-content: center;
+  justify-content: space-between; /* ⬅️ clé */
   position: relative;
   z-index: 20;
 }
-
 .title-center {
   text-align: center;
 }
-
 .title-center h1 {
   margin: 0;
   line-height: 1.1;
+}
+/* Titre "puzzle" — volontairement plus discret que l’icône */
+.title-main h1 {
+  margin: 0;
+  font-size: 1.8rem;      /* ⬅️ plus petit que le h1 standard */
+  font-weight: 500;       /* moins dominant */
+  letter-spacing: 0.015em; /* touche élégante */
+  line-height: 1.05;
 }
 
 .subtitle {
   margin-top: 2px;
   font-size: 14px;
   opacity: 0.6;
+  color: var(--text-secondary);
 }
-
 .title-icons {
   position: absolute;
   right: 0;
@@ -415,9 +464,36 @@ const currentPos = computed(() => state.value.current);
   display: flex;
   gap: 4px;
 }
-
 .title-icons button {
   padding: 2px;
+}
+/* TITLE MAIN (icon + title) */
+.title-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+/* Icône du titre */
+.title-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 🎨 couleur réelle de l’icône */
+  color: var(--action-main);
+
+  /* 🎁 effet visuel */
+  background: var(--action-soft);
+  border-radius: 12px;
+  padding: 6px;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+/* sécurité */
+.title-logo .icon {
+  display: flex;
 }
 
 /* TOOLBAR */
@@ -427,81 +503,130 @@ const currentPos = computed(() => state.value.current);
   gap: 12px;
   margin: 12px 0;
 }
-
 button {
   background: none;
   border: none;
-  color: #1e3a8a;
+  color: var(--action-main);
   cursor: pointer;
 }
-
 button:disabled {
-  color: #9ca3af;
+  color: var(--action-disabled);
   cursor: default;
 }
-
 .section-sep {
-  height: 1px;
-  margin: 16px 0;
   background: linear-gradient(
     to right,
     transparent,
-    rgba(0,0,0,0.15),
+    var(--sep-line),
     transparent
   );
 }
 
 /* BOARD */
 .board-wrap {
-  width: min(92vmin, 820px);
+  width: min(90vw, 360);
+  aspect-ratio: 1 ;
   margin: auto;
   position: relative;
-  z-index: 1
 }
-
+@media (max-width: 480px) {
+  .toolbar {
+    margin: 8px 0;
+    gap: 10px;
+  }
+  .board {
+    gap: 6px;
+  }
+}
+/* iPhone */
+@media (max-width: 390px) {
+  .board-wrap {
+    width: calc(92vw); 
+  }
+}
+/* iPad portrait */
+@media (min-width: 480px) and (max-width: 900px) {
+  .board-wrap {
+    width: 70vmin;
+    max-width: 520px;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app: #0F172A;
+    --bg-panel: #020617;
+    --text-main: #E5E7EB;
+    /* etc. */
+  }
+}
 .board {
   position: relative;
   display: grid;
+  gap: clamp(2px, 0.8vmin, 8px); 
+  max-height: 68vh;
   gap: 8px;
-  aspect-ratio: 1;
+  width: 100%;
+  height: 100%; 
   align-items: stretch;
   justify-items: stretch;
   z-index: 1;
 }
+.board-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 6px 12px;
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
+
+  font-size: 0.85rem;
+  color: #374151; /* gris lisible */
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+
+  pointer-events: none;
+  z-index: 8;
+}
 .cell {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: clamp(6px, 1.2vmin, 12px);
+  border: 1px solid var(--cell-border);
   box-sizing: border-box;
   padding: 0;
   overflow: hidden;
+  background: var(--cell-bg);
 }
-
 .cell-value {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: clamp(12px, 2.2vmin, 18px);
   font-weight: 500;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-
 .cell.current {
-  box-shadow: inset 0 0 0 3px #2563eb;
+  background: var(--cell-current-bg);
+  box-shadow: inset 0 0 0 3px var(--cell-current-border);
 }
-
 .cell.tip {
-  background: #c6f6d5;
-  box-shadow: inset 0 0 0 3px #2f855a;
+  background: var(--cell-tip-bg);
+  box-shadow: inset 0 0 0 3px var(--cell-tip-border);
 }
-
-.cell.valid {
-  background: #e8f3ff;
+.cell.valid:not(.tip):not(.current) {
+  background: var(--cell-valid-bg);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25);
 }
 
 /* START MESSAGE */
@@ -517,42 +642,54 @@ button:disabled {
   z-index: 10;
   pointer-events: none;
 }
-
 .fade-msg {
   animation: fadeInOut 2s ease forwards;
 }
-
 @keyframes fadeInOut {
   0%   { opacity: 0; }
   15%  { opacity: 1; }
   85%  { opacity: 1; }
   100% { opacity: 0; }
 }
-
-.dead-end-msg {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  font-weight: 600;
-  color: #991b1b;              /* rouge sombre */
-  background: rgba(255,255,255,0.85);
-  z-index: 9;
-  pointer-events: none;        /* ne bloque pas undo/reset */
-}
-
+.dead-end-msg,
 .no-solution-msg {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 26px;
-  font-weight: 600;
-  color: #7c2d12;              /* brun/rouge doux */
-  background: rgba(255,255,255,0.82);
-  z-index: 9;
-  pointer-events: none;        /* ⬅️ CRUCIAL */
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 6px 12px;
+  border-radius: 999px;
+
+  font-size: 0.85em;
+  font-weight: 500;
+  white-space: nowrap;
+
+  background: var(--badge-bg);
+  color: var(--badge-text);
+
+  z-index: 5;
+  pointer-events: none;
+}
+.victory-msg {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 6px 14px;
+  border-radius: 999px;
+
+  font-size: 0.85em;
+  font-weight: 500;
+  white-space: nowrap;
+
+  background: var(--cell-tip-bg);
+  color: #065F46; /* vert profond */
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 6;
+  pointer-events: none;
 }
 
 /* FADE */
@@ -560,7 +697,6 @@ button:disabled {
 .fade-leave-active {
   transition: opacity 0.6s;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
@@ -579,16 +715,16 @@ button:disabled {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--bg-overlay);
   display: grid;
   place-items: center;
   z-index: 1000;
 }
-
 .modal-close {
-  position: absolute;
+  position: sticky;
   top: 10px;
   right: 10px;
+  margin-left: auto;
 
   display: flex;
   align-items: center;
@@ -607,7 +743,6 @@ button:disabled {
 
   transition: background 0.2s ease;
 }
-
 .modal-close:hover {
   background: rgba(37, 99, 235, 0.22);
   transform: scale(1.05);
@@ -615,30 +750,32 @@ button:disabled {
 .modal-close:active {
   background: rgba(0,0,0,0.12);
 }
-
 .modal-content {
   position: relative;
-  background: white;
+  color: var(--text-main);
+  background: var(--bg-panel);
   padding: 20px;
   border-radius: 14px;
-  min-width: 280px;
-  max-width: 90vw;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-}
 
+  width: min(92vw, 420px);
+  max-height: 85vh;              /* ⬅️ clé */
+  overflow-y: auto;              /* ⬅️ clé */
+
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+
+  -webkit-overflow-scrolling: touch; /* ⬅️ iOS smooth scroll */
+}
 .settings-center {
   display: flex;
   justify-content: center;
   margin-top: 8px;
 }
-
 .checkbox {
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 0.95em;
 }
-
 .info-help {
   display: flex;
   flex-direction: column;
@@ -646,7 +783,6 @@ button:disabled {
   margin: 12px auto;
   width: fit-content;
 }
-
 .info-help-row {
   display: flex;
   align-items: center;     /* ✅ centre verticalement icône + texte */
@@ -656,7 +792,6 @@ button:disabled {
   font-size: 0.95em;
   line-height: 1.4;
 }
-
 .info-help-icon {
   width: 22px;             /* “colonne” icône stable */
   height: 22px;

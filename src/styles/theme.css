@@ -1,0 +1,49 @@
+/* =========================================================
+   🎨 SquareGame – Color Theme
+   Mobile-first (iPhone + iPad)
+========================================================= */
+
+:root {
+  /* === Base / Layout === */
+  --bg-app:        #F5F7FA;
+  --bg-panel:      #FFFFFF;
+  --bg-overlay:    rgba(0,0,0,0.45);
+  --sep-line:      rgba(0,0,0,0.12);
+
+  /* === Text === */
+  --text-main:      #1F2937;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
+
+  /* === Actions & Icons === */
+  --action-main:     #2563EB;
+  --action-soft:     rgba(37,99,235,0.15);
+  --action-disabled: #9CA3AF;
+
+  /* === Grid / Cells === */
+  --cell-bg:             #FFFFFF;
+  --cell-border:         rgba(0,0,0,0.12);
+
+  --cell-current-bg:     #EFF6FF;
+  --cell-current-border: #2563EB;
+
+  --cell-valid-bg:       #eef6ff;
+
+  --cell-tip-bg:         #DCFCE7;
+  --cell-tip-border:     #22C55E;
+
+  /* === Feedback / Messages === */
+  --badge-bg:    #111827;
+  --badge-text:  #FFFFFF;
+
+  --warn-bg:     #FEF2F2;
+  --warn-text:   #991B1B;
+
+  --error-bg:    #FFF7ED;
+  --error-text:  #9A3412;
+
+  /* === Modal Close === */
+  --close-bg:    rgba(37,99,235,0.12);
+  --close-hover: rgba(37,99,235,0.22);
+  --close-icon:  #2563EB;
+}
