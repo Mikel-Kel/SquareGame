@@ -50,3 +50,32 @@
   --close-hover: rgba(37,99,235,0.22);
   --close-icon:  #2563EB;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app:        #0F172A;
+    --bg-panel:      #020617;
+    --bg-overlay:    rgba(0,0,0,0.6);
+
+    --text-main:      #E5E7EB;
+    --text-secondary: #9CA3AF;
+    --text-muted:     #6B7280;
+
+    --action-main:     #60A5FA;
+    --action-soft:     rgba(96,165,250,0.18);
+    --action-disabled: #6B7280;
+
+    --sep-line: rgba(255,255,255,0.14);
+
+    --cell-bg:             #020617;
+    --cell-border:         rgba(255,255,255,0.15);
+    --cell-current-bg:     rgba(96,165,250,0.15);
+    --cell-current-border: #60A5FA;
+    --cell-valid-bg:       rgba(96,165,250,0.12);
+    --cell-tip-bg:         rgba(34,197,94,0.20);
+    --cell-tip-border:     #22C55E;
+
+    --badge-bg:   #E5E7EB;
+    --badge-text: #020617;
+  }
+}
