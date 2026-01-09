@@ -15,18 +15,22 @@ const buildDate = __BUILD_DATE__
 /* =======================
    Configuration
 ======================= */
-const N = 10;
+const boardSize = ref(7) // autorisé: 5 → 10
 
 /* =======================
    Board — SOURCE DE VÉRITÉ
 ======================= */
-const {
-  state,
-  idx,
-  play,
-  undo,
-  reset,
-} = useBoard(N);
+const boardApi = computed(() => useBoard(boardSize.value));
+
+const state = computed(() => boardApi.value.state.value);
+const idx = (...args: Parameters<typeof boardApi.value.idx>) =>
+  boardApi.value.idx(...args);
+
+const play = (...args: Parameters<typeof boardApi.value.play>) =>
+  boardApi.value.play(...args);
+
+const undo = () => boardApi.value.undo();
+const reset = () => boardApi.value.reset();
 
 /* =======================
    UI state
@@ -141,8 +145,8 @@ async function runSolution() {
 ======================= */
 const cells = computed(() => {
   const out: { r: number; c: number; i: number }[] = [];
-  for (let r = 0; r < N; r++)
-    for (let c = 0; c < N; c++)
+  for (let r = 0; r < boardSize.value; r++)
+    for (let c = 0; c < boardSize.value; c++)
       out.push({ r, c, i: idx(r, c) });
   return out;
 });
@@ -152,7 +156,7 @@ const path = computed(() => state.value.path);
 const currentPos = computed(() => state.value.current);
 
 const isCompleted = computed(() => {
-  return state.value.path.length === N * N
+  return state.value.path.length === boardSize.value * boardSize.value
 })
 
 const showVictory = computed(() => {
@@ -217,7 +221,7 @@ const showVictory = computed(() => {
 </div>
 
 <div class="board-wrap">
-  <section class="board" :style="{ gridTemplateColumns: `repeat(${N}, 1fr)` }">
+  <section class="board" :style="{ gridTemplateColumns: `repeat(${boardSize}, 1fr)` }">
 
     <!-- START MESSAGE -->
     <div
@@ -282,6 +286,19 @@ const showVictory = computed(() => {
     </button>
 
     <h3>Game Settings</h3>
+    <div class="section-sep"></div>
+
+    <h4>📐 Board size</h4>
+
+    <select v-model.number="boardSize" @change="reset">
+      <option v-for="n in [5,6,7,8,9,10]" :key="n" :value="n">
+        {{ n }} × {{ n }}
+      </option>
+    </select>
+
+    <p class="hint">
+      Below 5×5, no solution exists.
+    </p>
     <div class="section-sep"></div>
 
     <h4>🔀 Movement style</h4>
